@@ -45,13 +45,21 @@ class ImgFigure extends React.Component {
 
 	/*imgFigures的点击处理函数*/
 	handleClick = (e) => {
-		this.props.inverse();
+		//调用的是对应的props的inverse值，而不是函数inverse
+		//因为this是在ImgFigure的
+		if (this.props.arrage.isCenter) {
+			this.props.inverse();
+		} else {
+			this.props.center();
+		}
+
 
 		e.stopPropagation();
 		e.preventDefault();
 	}
 
 	render() {
+		//保存style属性的对象
 		var styleObj = {};
 
 		//如果props属性中指定了这张图片的位置，则使用
@@ -62,9 +70,13 @@ class ImgFigure extends React.Component {
 
 		//如果图片的旋转角度有值并且不为0，添加角度
 		if (this.props.arrage.rotate) {
-			['-moz-', '-ms-', '-webkit-', '', ].forEach(function(value) {
-				styleObj[value + 'transform'] = 'rotate(' + this.props.arrage.rotate + 'deg)';
+			['MozTransform', 'msTransform', 'WebkitTransform', 'transform'].forEach(function(value) {
+				styleObj[value] = 'rotate(' + this.props.arrage.rotate + 'deg)';
 			}.bind(this));
+		}
+
+		if (this.props.arrage.isCenter) {
+			styleObj.zIndex = 11;
 		}
 		var imgFigureClassName = "img-figure";
 		//如果翻转，添加对应类名
@@ -89,7 +101,34 @@ class ImgFigure extends React.Component {
 	}
 }
 
-//站点基本骨架
+class ControllerUnit extends React.Component {
+
+
+		handleClick = (e) => {
+			//如果点击的是当前正在选中态的按钮，则翻转图片，否则将对应的图片居中
+			if (this.props.arrage.isCenter) {
+				this.props.inverse();
+			} else {
+				this.props.center();
+			}
+			e.preventDefault();
+			e.stopPropagation();
+		}
+		render() {
+			var controllerUintClassName = "controller-unit";
+			//如果对应的是居中的图片，显示控制按钮的居中态
+			if (this.props.arrage.isCenter) {
+				controllerUintClassName += " is-center";
+				if (this.props.arrage.isInverse) {
+					controllerUintClassName += " is-inverse";
+				}
+			}
+			return (
+				<span className={controllerUintClassName} onClick={this.handleClick}></span>
+			);
+		}
+	}
+	//站点基本骨架
 class AppComponent extends React.Component {
 
 	constructor(props) {
@@ -126,7 +165,8 @@ class AppComponent extends React.Component {
 					// 		top:'0'
 					// },
 					// rotate:0,   //旋转角度
-					// isInverse:false   //图片正面
+					// isInverse:false,   //图片正面
+					// isCenter:false //图片是否居中
 				]
 			};
 		}
@@ -180,7 +220,8 @@ class AppComponent extends React.Component {
 			@param index 输入当前被执行inverse操作的图片低音的图片信息数组的index值
 			@return{Function}这是一个闭包函数，其内return一个真正被执行的函数
 			 */
-	inverse(index) {
+		//这里使用闭包的原因是，执行的时候结果是返回的函数，函数里是每一次储存的index和imgsArrageArr，点击的时候执行该函数，利用的是对应的值
+	inverse = (index) => {
 		return function() {
 			var imgsArrageArr = this.state.imgsArrageArr;
 
@@ -188,7 +229,7 @@ class AppComponent extends React.Component {
 			this.setState({
 				imgsArrageArr: imgsArrageArr
 			});
-		}.bind(this);
+		}.bind(this)
 	}
 
 	/*
@@ -219,15 +260,17 @@ class AppComponent extends React.Component {
 
 				//存储在上侧区域的图片信息
 				imgsArrageTopArr = [],
-				topImgNum = Math.ceil(Math.random() * 2), //取一个或不取[0,2)
+				topImgNum = Math.floor(Math.random() * 2), //取一个或不取[0,2)
 				topImgSpliceIndex = 0,
 				//存储居中图片的状态信息，把居中图片从图片数组中取出
 				imgsArrageCenterArr = imgsArrageArr.splice(centerIndex, 1);
 
-			//首先居中，centerIndex的图片
-			imgsArrageCenterArr[0].pos = centerPos;
-			//居中的centerIndex的图片不需要旋转
-			imgsArrageCenterArr[0].rotate = 0;
+			//首先居中，centerIndex的图片,居中的centerIndex的图片不需要旋转
+			imgsArrageCenterArr[0] = {
+				pos: centerPos,
+				rotate: 0,
+				isCenter: true
+			}
 
 
 			//取出可能的索引号，删除了居中图片
@@ -245,7 +288,7 @@ class AppComponent extends React.Component {
 						left: getRangeRandom(vPosRangeX[0], vPosRangeX[1])
 					},
 					rotate: get30DegRandom(),
-					isInverse: false
+					isCenter: false
 				}
 			})
 
@@ -266,7 +309,7 @@ class AppComponent extends React.Component {
 						left: getRangeRandom(hPosRangeLORX[0], hPosRangeLORX[1])
 					},
 					rotate: get30DegRandom(),
-					isInverse: false
+					isCenter: false
 				}
 			}
 
@@ -282,7 +325,15 @@ class AppComponent extends React.Component {
 				imgsArrageArr: imgsArrageArr
 			});
 		}
-		/*利用rearrange函数，居中对应index的图片*/
+		/*利用rearrange函数，居中对应index的图片
+		@param index，需要悲剧中的图片的信息数组对应的index
+		@return {Function}
+		*/
+	center(index) {
+		return function() {
+			this.rearrange(index);
+		}.bind(this);
+	}
 
 	render() {
 
@@ -301,7 +352,8 @@ class AppComponent extends React.Component {
 						top: 0
 					},
 					rotate: 0,
-					isInverse: false
+					isInverse: false,
+					isCenter: false
 				};
 			}
 			//将单个图片组件存入数组
@@ -309,10 +361,11 @@ class AppComponent extends React.Component {
 			//绑定react compontent到函数中
 			//标签可以是对象，在其他地方可以获得标签对象，并调用其中的属性
 			//调用封装的函数没有什么两样，同样通过props的方式
-			imgFigures.push(<ImgFigure data={value} ref={"imgFigure"+index} arrage={this.state.imgsArrageArr[index]} inverse={this.inverse(index)}/>)
+			//key是新特性，给react自己重新渲染的时候调用
+			//给标签传入属性，在别处调用
+			imgFigures.push(<ImgFigure data={value} key={index} ref={"imgFigure"+index} arrage={this.state.imgsArrageArr[index]} inverse={this.inverse(index)} center={this.center(index)}/>)
+			controllerUnits.push(<ControllerUnit key={index} arrage={this.state.imgsArrageArr[index]} inverse={this.inverse(index)} center={this.center(index)}/>);
 		}.bind(this));
-
-
 		return (
 			<section className="stage" ref="stage">
 				<section className="img-sec">
